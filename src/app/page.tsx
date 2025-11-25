@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 type Prediction = {
-  hour: string; // ISO string
+  hour: string;
   percentage: number;
   reason: string;
 };
