@@ -17,6 +17,9 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // ------------------------------------------------------------
+  // 1️⃣ Récupération de la géolocalisation
+  // ------------------------------------------------------------
   useEffect(() => {
     if (!navigator.geolocation) {
       setError("Geolocation not supported");
@@ -31,81 +34,93 @@ export default function Home() {
         setLocation({ lat, lon });
 
         try {
-          // 1️⃣ Récupérer le nom de la ville
+          // ------------------------------------------------------------
+          // 2️⃣ Reverse geocoding → nom de la ville
+          // ------------------------------------------------------------
           const geoRes = await fetch(
             `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`
           );
           const geoData = await geoRes.json();
+
           const cityName =
             geoData.address?.city ||
             geoData.address?.town ||
             geoData.address?.village ||
             geoData.address?.county ||
             "Unknown city";
+
           setCity(cityName);
 
-          // 2️⃣ Appel au backend météo
+          // ------------------------------------------------------------
+          // 3️⃣ Récupération prévision météo (cloud)
+          // ------------------------------------------------------------
           const meteoRes = await fetch("/api/meteo-forecast", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ lat, lon }),
           });
+
           const meteoData = await meteoRes.json();
+
           const hourlyTimes: string[] = meteoData.hourlyTimes;
           const hourlyCloud: number[] = meteoData.hourlyCloud;
 
-          // 3️⃣ Construire les targetHours
+          // ------------------------------------------------------------
+          // 4️⃣ Construction des heures cibles
+          // ------------------------------------------------------------
           const now = new Date();
           const targetHours: string[] = [];
 
           const addHour = (d: Date) => targetHours.push(d.toISOString());
 
-          // now
-          addHour(new Date(now));
+          addHour(new Date(now)); // now
 
           // 22h tonight
           const h22Tonight = new Date(now);
           h22Tonight.setHours(22, 0, 0, 0);
           addHour(h22Tonight);
 
-          // 00h tomorrow
+          // Tomorrow 00h
           const h00Tomorrow = new Date(now);
           h00Tomorrow.setDate(h00Tomorrow.getDate() + 1);
           h00Tomorrow.setHours(0, 0, 0, 0);
           addHour(h00Tomorrow);
 
-          // 02h tomorrow
+          // Tomorrow 02h
           const h02Tomorrow = new Date(h00Tomorrow);
           h02Tomorrow.setHours(2, 0, 0, 0);
           addHour(h02Tomorrow);
 
-          // 22h tomorrow
+          // Tomorrow 22h
           const h22Tomorrow = new Date(now);
           h22Tomorrow.setDate(h22Tomorrow.getDate() + 1);
           h22Tomorrow.setHours(22, 0, 0, 0);
           addHour(h22Tomorrow);
 
-          // 00h after tomorrow
+          // After tomorrow 00h
           const h00AfterTomorrow = new Date(now);
           h00AfterTomorrow.setDate(h00AfterTomorrow.getDate() + 2);
           h00AfterTomorrow.setHours(0, 0, 0, 0);
           addHour(h00AfterTomorrow);
 
-          // 02h after tomorrow
+          // After tomorrow 02h
           const h02AfterTomorrow = new Date(h00AfterTomorrow);
           h02AfterTomorrow.setHours(2, 0, 0, 0);
           addHour(h02AfterTomorrow);
 
-          console.log("Target hours:", targetHours);
-
-          // 4️⃣ Appel au backend Kp forecast
+          // ------------------------------------------------------------
+          // 5️⃣ NOAA forecast (KP index et texte)
+          // ------------------------------------------------------------
           const kpRes = await fetch("/api/kp-forecast", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
           });
+
           const kpData = await kpRes.json();
 
-          // 5️⃣ Préparer le payload pour l'IA
+          // ------------------------------------------------------------
+          // 6️⃣ Construire payload IA
+          // ------------------------------------------------------------
           const auroraPayload = {
             lat,
             lon,
@@ -116,29 +131,35 @@ export default function Home() {
             targetHours,
           };
 
-          console.log("Payload IA:", auroraPayload);
+          console.log("Payload sent to backend IA:", auroraPayload);
 
-          // 6️⃣ Appel au backend IA
+          // ------------------------------------------------------------
+          // 7️⃣ Appel backend IA (GROQ)
+          // ------------------------------------------------------------
           const iaRes = await fetch("/api/ia", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(auroraPayload),
           });
 
-          const iaData: Prediction[] = await iaRes.json();
+          const iaData = await iaRes.json();
 
-          // 🔹 Simplification des raisons
-          const simplifiedPredictions = iaData.map((p, i) => ({
-            hour: targetHours[i], // on force l'heure cible
-            percentage: p.percentage,
-            reason: p.reason?.split(".")[0] ?? "No reason", // prend juste la première phrase
-          }));
+          // ------------------------------------------------------------
+          // 8️⃣ Simplification des prédictions
+          // ------------------------------------------------------------
+          const simplifiedPredictions = iaData.map(
+            (p: { percentage: number; reason: string }, i: number) => ({
+              hour: targetHours[i],
+              percentage: p.percentage ?? 0,
+              reason: p.reason?.split(".")[0] ?? "No reason",
+            })
+          );
 
           setPredictions(simplifiedPredictions);
-          setLoading(false);
         } catch (err) {
           console.error(err);
           setError("Failed to fetch data");
+        } finally {
           setLoading(false);
         }
       },
@@ -149,38 +170,50 @@ export default function Home() {
     );
   }, []);
 
+  // ------------------------------------------------------------
+  // 🔹 Rendu du composant
+  // ------------------------------------------------------------
   return (
-    <div className="min-h-screen flex flex-col items-center bg-black text-white p-4">
-      <h1 className="text-4xl font-bold mb-4">
-        {city ? `Welcome, user from ${city} 🚀` : "Welcome 🚀"}
-      </h1>
-
+    <div className="min-h-screen flex flex-col items-center text-white p-4">
       {loading && <p>Loading… ⏳</p>}
 
       {!loading && predictions.length > 0 && (
-        <div className="w-full max-w-md">
-          <h2 className="text-2xl font-bold mb-4">Aurora Predictions</h2>
-          <table className="border border-gray-500 text-white w-full">
-            <thead>
-              <tr>
-                <th className="border px-2 py-1">Hour</th>
-                <th className="border px-2 py-1">Chance %</th>
-                <th className="border px-2 py-1">Reason</th>
-              </tr>
-            </thead>
-            <tbody>
-              {predictions.map((p, i) => (
-                <tr key={i}>
-                  <td className="border px-2 py-1">
-                    {new Date(p.hour).toLocaleString()}
-                  </td>
-                  <td className="border px-2 py-1">{p.percentage}%</td>
-                  <td className="border px-2 py-1">{p.reason}</td>
+        <>
+          {/* Afficher la prédiction du moment séparément */}
+          <div className="mb-6 p-4 bg-gray-800 rounded w-full max-w-md">
+            <h2 className="text-xl font-bold mb-2">
+              Current Aurora Prediction in {city} :
+            </h2>
+            <p>
+              Chance: {predictions[0].percentage}%<br />
+              {predictions[0].reason}
+            </p>
+          </div>
+
+          {/* Tableau pour les autres prédictions */}
+          <div className="w-full max-w-md">
+            <table className="border border-gray-500 text-white w-full">
+              <thead>
+                <tr>
+                  <th className="border px-2 py-1">Hour</th>
+                  <th className="border px-2 py-1">Chance %</th>
+                  <th className="border px-2 py-1">Reason</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {predictions.slice(1).map((p, i) => (
+                  <tr key={i}>
+                    <td className="border px-2 py-1">
+                      {new Date(p.hour).toLocaleString()}
+                    </td>
+                    <td className="border px-2 py-1">{p.percentage}%</td>
+                    <td className="border px-2 py-1">{p.reason}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       {error && <p className="text-red-500 mt-4">{error}</p>}

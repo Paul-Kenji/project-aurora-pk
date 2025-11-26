@@ -5,7 +5,7 @@ type AuroraRequest = {
   lon: number;
   city?: string;
   noaaForecastText: string;
-  targetHours: string[]; // ISO strings
+  targetHours: string[];
   hourlyCloud?: number[];
   hourlyTimes?: string[];
 };
@@ -30,14 +30,15 @@ export async function POST(req: Request) {
       );
     }
 
-    // Convertir toutes les heures cibles en UTC ISO
+    // Convertir en UTC ISO
     const targetHoursUTC = targetHours.map((h) => new Date(h).toISOString());
 
-    // Construire prompt pour l'IA
+    // Prompt IA
     const prompt = `
 You are an expert in aurora borealis forecasting.
 
 Location: ${city ?? "Unknown"} (${lat}, ${lon})
+
 NOAA 3-Day Forecast Text:
 ${noaaForecastText}
 
@@ -48,15 +49,18 @@ ${
     : "Not provided"
 }
 
-For each of the following hours (in UTC), predict the probability (0-100%) of seeing an aurora. Take into account local sunrise and sunset for the given lat/lon. Provide a short reason for the prediction.
+For each of the following hours (in UTC), give the aurora visibility percentage (0-100%) and a short reason.
 
-Hours to predict:
+Hours:
 ${targetHoursUTC.map((h) => `- ${h}`).join("\n")}
 
-Return ONLY a JSON array of objects like:
-{ "time": "ISO timestamp", "percentage": 0-100, "reason": "short explanation" }
+Return ONLY a JSON array like:
+[
+  { "time": "ISO", "percentage": 0-100, "reason": "short explanation" }
+]
 `;
 
+    // Requête Groq
     const aiRes = await fetch(
       "https://api.groq.com/openai/v1/chat/completions",
       {
@@ -70,7 +74,6 @@ Return ONLY a JSON array of objects like:
           messages: [{ role: "user", content: prompt }],
           max_tokens: 1000,
           temperature: 0,
-          top_p: 1,
         }),
       }
     );
@@ -82,30 +85,49 @@ Return ONLY a JSON array of objects like:
     }
 
     const aiData = await aiRes.json();
-    const content = aiData.choices?.[0]?.message?.content ?? "";
-    console.log("AI raw response content:", content);
+    const raw = aiData.choices?.[0]?.message?.content ?? "";
 
-    // Parse tolérant
-    let predictions: { time: string; percentage: number; reason: string }[] =
-      [];
+    // --- PARSING ROBUSTE ---
+
+    let predictions = [];
+
     try {
-      const matches: string[] | null = content.match(/\{[^}]+\}/g);
-      if (matches) {
-        predictions = matches.map((m: string) => JSON.parse(m));
+      // 1️⃣ Essaye de parser directement
+      predictions = JSON.parse(raw);
+    } catch {
+      // 2️⃣ Si ça échoue, extrait le JSON à la main
+      const jsonMatch = raw.match(/\[[\s\S]*\]/);
+      if (!jsonMatch) {
+        console.error("No JSON detected in AI output.");
+        return NextResponse.json(
+          { error: "Réponse IA invalide", raw },
+          { status: 500 }
+        );
       }
-    } catch (err) {
-      console.error("Failed to parse AI response:", err, content);
-      return NextResponse.json(
-        { error: "Impossible de parser la réponse IA", raw: content },
-        { status: 500 }
-      );
+
+      try {
+        predictions = JSON.parse(jsonMatch[0]);
+      } catch (err) {
+        console.error("JSON extraction failed:", err);
+        return NextResponse.json(
+          { error: "Impossible de parser la réponse IA", raw },
+          { status: 500 }
+        );
+      }
     }
+
+    // Validation minimale
+    predictions = predictions.map((p: any) => ({
+      time: p.time ?? null,
+      percentage: Number(p.percentage) || 0,
+      reason: p.reason ?? "No reason",
+    }));
 
     return NextResponse.json(predictions);
   } catch (err) {
     console.error("Aurora POST error:", err);
     return NextResponse.json(
-      { error: "Erreur lors de la prédiction", predictions: [] },
+      { error: "Erreur lors de la prédiction" },
       { status: 500 }
     );
   }
