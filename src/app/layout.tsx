@@ -11,7 +11,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="fr">
-      <body className="relative min-h-screen text-white overflow-hidden">
+      <body className="relative min-h-screen text-white">
         <AuroraBackground />
 
         {/* Header */}

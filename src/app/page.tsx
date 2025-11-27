@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import AuroraLine from "./components/mainPage/AuroraLine";
+import { KpGauge } from "./components/mainPage/KpJauge";
 
 type Prediction = {
   hour: string;
@@ -17,9 +19,9 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // ------------------------------------------------------------
-  // 1️⃣ Récupération de la géolocalisation
-  // ------------------------------------------------------------
+  // -------------------------------------------------------
+  // GEO + API CALLS
+  // -------------------------------------------------------
   useEffect(() => {
     if (!navigator.geolocation) {
       setError("Geolocation not supported");
@@ -34,9 +36,7 @@ export default function Home() {
         setLocation({ lat, lon });
 
         try {
-          // ------------------------------------------------------------
-          // 2️⃣ Reverse geocoding → nom de la ville
-          // ------------------------------------------------------------
+          // 1. Reverse geocoding
           const geoRes = await fetch(
             `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`
           );
@@ -47,81 +47,70 @@ export default function Home() {
             geoData.address?.town ||
             geoData.address?.village ||
             geoData.address?.county ||
-            "Unknown city";
-
+            "Unknown";
           setCity(cityName);
 
-          // ------------------------------------------------------------
-          // 3️⃣ Récupération prévision météo (cloud)
-          // ------------------------------------------------------------
+          // 2. Meteo forecast
           const meteoRes = await fetch("/api/meteo-forecast", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ lat, lon }),
           });
-
           const meteoData = await meteoRes.json();
 
           const hourlyTimes: string[] = meteoData.hourlyTimes;
           const hourlyCloud: number[] = meteoData.hourlyCloud;
 
-          // ------------------------------------------------------------
-          // 4️⃣ Construction des heures cibles
-          // ------------------------------------------------------------
+          // ---------------------------------------------
+          // TARGET HOURS
+          // ---------------------------------------------
           const now = new Date();
           const targetHours: string[] = [];
 
           const addHour = (d: Date) => targetHours.push(d.toISOString());
 
-          addHour(new Date(now)); // now
+          addHour(new Date(now));
 
-          // 22h tonight
-          const h22Tonight = new Date(now);
-          h22Tonight.setHours(22, 0, 0, 0);
-          addHour(h22Tonight);
+          const tonight22 = new Date(now);
+          tonight22.setHours(22, 0, 0, 0);
+          addHour(tonight22);
 
-          // Tomorrow 00h
-          const h00Tomorrow = new Date(now);
-          h00Tomorrow.setDate(h00Tomorrow.getDate() + 1);
-          h00Tomorrow.setHours(0, 0, 0, 0);
-          addHour(h00Tomorrow);
+          const tom00 = new Date(now);
+          tom00.setDate(tom00.getDate() + 1);
+          tom00.setHours(0, 0, 0, 0);
+          addHour(tom00);
 
-          // Tomorrow 02h
-          const h02Tomorrow = new Date(h00Tomorrow);
-          h02Tomorrow.setHours(2, 0, 0, 0);
-          addHour(h02Tomorrow);
+          const tom02 = new Date(tom00);
+          tom02.setHours(2, 0, 0, 0);
+          addHour(tom02);
 
-          // Tomorrow 22h
-          const h22Tomorrow = new Date(now);
-          h22Tomorrow.setDate(h22Tomorrow.getDate() + 1);
-          h22Tomorrow.setHours(22, 0, 0, 0);
-          addHour(h22Tomorrow);
+          const tom22 = new Date(now);
+          tom22.setDate(tom22.getDate() + 1);
+          tom22.setHours(22, 0, 0, 0);
+          addHour(tom22);
 
-          // After tomorrow 00h
-          const h00AfterTomorrow = new Date(now);
-          h00AfterTomorrow.setDate(h00AfterTomorrow.getDate() + 2);
-          h00AfterTomorrow.setHours(0, 0, 0, 0);
-          addHour(h00AfterTomorrow);
+          const aft00 = new Date(now);
+          aft00.setDate(aft00.getDate() + 2);
+          aft00.setHours(0, 0, 0, 0);
+          addHour(aft00);
 
-          // After tomorrow 02h
-          const h02AfterTomorrow = new Date(h00AfterTomorrow);
-          h02AfterTomorrow.setHours(2, 0, 0, 0);
-          addHour(h02AfterTomorrow);
+          const aft02 = new Date(aft00);
+          aft02.setHours(2, 0, 0, 0);
+          addHour(aft02);
 
-          // ------------------------------------------------------------
-          // 5️⃣ NOAA forecast (KP index et texte)
-          // ------------------------------------------------------------
+          // ---------------------------------------------
+          // NOAA KP forecast
+          // ---------------------------------------------
           const kpRes = await fetch("/api/kp-forecast", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
           });
-
           const kpData = await kpRes.json();
 
-          // ------------------------------------------------------------
-          // 6️⃣ Construire payload IA
-          // ------------------------------------------------------------
-          const auroraPayload = {
+          // ---------------------------------------------
+          // IA PAYLOAD
+          // ---------------------------------------------
+          const payload = {
             lat,
             lon,
             city: cityName,
@@ -131,23 +120,15 @@ export default function Home() {
             targetHours,
           };
 
-          console.log("Payload sent to backend IA:", auroraPayload);
-
-          // ------------------------------------------------------------
-          // 7️⃣ Appel backend IA (GROQ)
-          // ------------------------------------------------------------
           const iaRes = await fetch("/api/ia", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(auroraPayload),
+            body: JSON.stringify(payload),
           });
 
           const iaData = await iaRes.json();
 
-          // ------------------------------------------------------------
-          // 8️⃣ Simplification des prédictions
-          // ------------------------------------------------------------
-          const simplifiedPredictions = iaData.map(
+          const simplified = iaData.map(
             (p: { percentage: number; reason: string }, i: number) => ({
               hour: targetHours[i],
               percentage: p.percentage ?? 0,
@@ -155,10 +136,10 @@ export default function Home() {
             })
           );
 
-          setPredictions(simplifiedPredictions);
+          setPredictions(simplified);
         } catch (err) {
           console.error(err);
-          setError("Failed to fetch data");
+          setError("Failed to load data");
         } finally {
           setLoading(false);
         }
@@ -170,49 +151,34 @@ export default function Home() {
     );
   }, []);
 
-  // ------------------------------------------------------------
-  // 🔹 Rendu du composant
-  // ------------------------------------------------------------
+  // -------------------------------------------------------
+  // RENDER
+  // -------------------------------------------------------
   return (
     <div className="min-h-screen flex flex-col items-center text-white p-4">
       {loading && <p>Loading… ⏳</p>}
 
       {!loading && predictions.length > 0 && (
         <>
-          {/* Afficher la prédiction du moment séparément */}
-          <div className="mb-6 p-4 bg-gray-800 rounded w-full max-w-md">
-            <h2 className="text-xl font-bold mb-2">
-              Current Aurora Prediction in {city} :
-            </h2>
-            <p>
-              Chance: {predictions[0].percentage}%<br />
-              {predictions[0].reason}
+          {/* CURRENT PREDICTION */}
+          <div className="mb-6 p-4 bg-gray-900/70 rounded-xl w-full max-w-md border border-white/10 backdrop-blur-md">
+            <h2 className="text-xl font-bold mb-2">Current Aurora in {city}</h2>
+
+            <p className="text-lg font-semibold">
+              {predictions[0].percentage}% chance
             </p>
+            <p className="text-gray-300 mt-1">{predictions[0].reason}</p>
           </div>
 
-          {/* Tableau pour les autres prédictions */}
-          <div className="w-full max-w-md">
-            <table className="border border-gray-500 text-white w-full">
-              <thead>
-                <tr>
-                  <th className="border px-2 py-1">Hour</th>
-                  <th className="border px-2 py-1">Chance %</th>
-                  <th className="border px-2 py-1">Reason</th>
-                </tr>
-              </thead>
-              <tbody>
-                {predictions.slice(1).map((p, i) => (
-                  <tr key={i}>
-                    <td className="border px-2 py-1">
-                      {new Date(p.hour).toLocaleString()}
-                    </td>
-                    <td className="border px-2 py-1">{p.percentage}%</td>
-                    <td className="border px-2 py-1">{p.reason}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          {/* TONIGHT */}
+          <AuroraLine title="Tonight" items={predictions.slice(1, 4)} />
+
+          {/* TOMORROW */}
+          <AuroraLine title="Tomorrow" items={predictions.slice(4, 7)} />
+          <KpGauge kp={4} />
+          <KpGauge kp={1} />
+          <KpGauge kp={9} />
+          <KpGauge kp={10} />
         </>
       )}
 

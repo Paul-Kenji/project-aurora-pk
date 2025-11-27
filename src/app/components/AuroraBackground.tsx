@@ -32,7 +32,7 @@ export default function AuroraBackground() {
             borderRadius: "50%",
             backgroundColor: "white",
             opacity: 0.8,
-            animation: `twinkle 2s infinite`,
+            animation: `twinkle 10s infinite`,
             animationDelay: `${s.delay}s`,
           }}
         />

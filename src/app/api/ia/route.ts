@@ -10,6 +10,68 @@ type AuroraRequest = {
   hourlyTimes?: string[];
 };
 
+// --- Parse NOAA text ---
+function parseNOAA(text: string) {
+  const lines = text.split("\n");
+  const kp: Record<string, number> = {};
+  const radiation: Record<string, number> = {};
+  const blackout: Record<string, number> = {};
+
+  const kpRegex = /^(\d\d-\d\dUT)\s+([\d.]+)/;
+  for (const line of lines) {
+    const match = line.match(kpRegex);
+    if (match) kp[match[1]] = parseFloat(match[2]);
+  }
+
+  lines.forEach((line) => {
+    const r = line.match(/^S1 or greater\s+(\d+)%/);
+    if (r) radiation["S1"] = parseInt(r[1]);
+  });
+
+  lines.forEach((line) => {
+    let r = line.match(/^R1-R2\s+(\d+)%/);
+    if (r) blackout["R1-R2"] = parseInt(r[1]);
+    r = line.match(/^R3 or greater\s+(\d+)%/);
+    if (r) blackout["R3+"] = parseInt(r[1]);
+  });
+
+  return { kp, radiation, blackout };
+}
+
+// --- Convert UTC date to Sherbrooke local time ---
+function toSherbrookeTime(utcDate: Date) {
+  const offset = -5; // UTC-5 pour Sherbrooke (hiver)
+  const local = new Date(utcDate);
+  local.setHours(local.getUTCHours() + offset);
+  return local;
+}
+
+// --- Check if night ---
+function isNightSherbrooke(date: Date) {
+  const local = toSherbrookeTime(date);
+  const hour = local.getHours();
+  return hour < 6 || hour >= 18;
+}
+
+// --- Adjust Kp by latitude ---
+function kpToProbability(kp: number, lat: number) {
+  let factor = 1;
+  if (lat >= 65) factor = 1.0;
+  else if (lat >= 60) factor = 0.7;
+  else if (lat >= 55) factor = 0.5;
+  else if (lat >= 50) factor = 0.3;
+  else factor = 0.1;
+  return Math.round(kp * 10 * factor);
+}
+
+// --- Convert cloud % to category ---
+function cloudCategory(percent: number) {
+  if (percent <= 20) return "low";
+  if (percent <= 50) return "moderate";
+  if (percent <= 80) return "high";
+  return "very high";
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -30,37 +92,45 @@ export async function POST(req: Request) {
       );
     }
 
-    // Convertir en UTC ISO
-    const targetHoursUTC = targetHours.map((h) => new Date(h).toISOString());
+    const targetDatesUTC = targetHours.map((h) => new Date(h));
+    const parsedNOAA = parseNOAA(noaaForecastText);
 
-    // Prompt IA
+    // --- Prepare prompt for IA ---
     const prompt = `
-You are an expert in aurora borealis forecasting.
+You are an expert in aurora forecasting. Use ONLY the data provided. Do NOT invent numbers.
 
 Location: ${city ?? "Unknown"} (${lat}, ${lon})
+Latitude: ${lat}°, Longitude: ${lon}°
+Target hours (UTC): ${targetDatesUTC.map((d) => d.toISOString()).join(", ")}
 
-NOAA 3-Day Forecast Text:
-${noaaForecastText}
+NOAA Kp index per 3-hour window:
+${Object.entries(parsedNOAA.kp)
+  .map(([t, k]) => `- ${t}: Kp ${k}`)
+  .join("\n")}
+
+Solar Radiation Forecast: ${JSON.stringify(parsedNOAA.radiation)}
+Radio Blackout Forecast: ${JSON.stringify(parsedNOAA.blackout)}
 
 Hourly cloud cover (if available):
 ${
   hourlyTimes && hourlyCloud
-    ? hourlyTimes.map((t, i) => `${t}: ${hourlyCloud[i]}%`).join("\n")
+    ? hourlyTimes.map((t, i) => `- ${t}: ${hourlyCloud[i]}%`).join("\n")
     : "Not provided"
 }
 
-For each of the following hours (in UTC), give the aurora visibility percentage (0-100%) and a short reason.
+Rules:
+- Use latitude to adjust aurora probability (closer to pole = higher probability).
+- If it is day at the target hour in Sherbrooke, visibility percentage = 0%.
+- Take Kp index, radiation, blackout, cloud cover, and latitude into account.
+- Return short reason for each hour.
+- Do NOT invent numbers.
 
-Hours:
-${targetHoursUTC.map((h) => `- ${h}`).join("\n")}
-
-Return ONLY a JSON array like:
+Return ONLY a JSON array:
 [
-  { "time": "ISO", "percentage": 0-100, "reason": "short explanation" }
+  { "time": "ISO (Sherbrooke local)", "percentage": 0-100, "reason": "short explanation" }
 ]
 `;
 
-    // Requête Groq
     const aiRes = await fetch(
       "https://api.groq.com/openai/v1/chat/completions",
       {
@@ -87,28 +157,19 @@ Return ONLY a JSON array like:
     const aiData = await aiRes.json();
     const raw = aiData.choices?.[0]?.message?.content ?? "";
 
-    // --- PARSING ROBUSTE ---
-
-    let predictions = [];
-
+    let predictions: any[] = [];
     try {
-      // 1️⃣ Essaye de parser directement
       predictions = JSON.parse(raw);
     } catch {
-      // 2️⃣ Si ça échoue, extrait le JSON à la main
       const jsonMatch = raw.match(/\[[\s\S]*\]/);
-      if (!jsonMatch) {
-        console.error("No JSON detected in AI output.");
+      if (!jsonMatch)
         return NextResponse.json(
           { error: "Réponse IA invalide", raw },
           { status: 500 }
         );
-      }
-
       try {
         predictions = JSON.parse(jsonMatch[0]);
       } catch (err) {
-        console.error("JSON extraction failed:", err);
         return NextResponse.json(
           { error: "Impossible de parser la réponse IA", raw },
           { status: 500 }
@@ -116,14 +177,47 @@ Return ONLY a JSON array like:
       }
     }
 
-    // Validation minimale
-    predictions = predictions.map((p: any) => ({
-      time: p.time ?? null,
-      percentage: Number(p.percentage) || 0,
-      reason: p.reason ?? "No reason",
-    }));
+    // --- Post-processing ---
+    const finalPredictions = predictions.map((p: any, idx: number) => {
+      const dateUTC = targetDatesUTC[idx];
+      const night = isNightSherbrooke(dateUTC);
+      const kpWindow = Object.entries(parsedNOAA.kp).find(([range]) => {
+        const [startStr, endStr] = range.split("-").map((s) => parseInt(s));
+        const hour = dateUTC.getUTCHours();
+        return hour >= startStr && hour < endStr;
+      });
+      const kp = kpWindow ? kpWindow[1] : 0;
+      const cloud = hourlyCloud?.[idx] ?? 0;
 
-    return NextResponse.json(predictions);
+      let percentage = kpToProbability(kp, lat);
+      let reason = "";
+
+      if (!night) {
+        reason = "Daytime, aurora not visible";
+        percentage = 0;
+      } else if (kp < 3) {
+        reason = "Kp index too low";
+      } else if (cloud > 50) {
+        reason = "Cloud cover too high";
+        percentage = Math.round(percentage * 0.5);
+      } else if (cloud > 20) {
+        reason = "Moderate cloud cover";
+        percentage = Math.round(percentage * 0.8);
+      } else if (lat < 50 && percentage < 20) {
+        reason = "Low latitude, aurora unlikely";
+        // on garde la valeur pour avoir une petite chance
+      } else {
+        reason = "Clear conditions, aurora likely";
+      }
+
+      return {
+        time: toSherbrookeTime(dateUTC).toISOString(),
+        percentage,
+        reason,
+      };
+    });
+
+    return NextResponse.json(finalPredictions);
   } catch (err) {
     console.error("Aurora POST error:", err);
     return NextResponse.json(
