@@ -2,12 +2,16 @@
 
 import { useEffect, useState } from "react";
 import AuroraLine from "./components/mainPage/AuroraLine";
-import { KpGauge } from "./components/mainPage/KpJauge";
+import { KpGauge } from "./components/mainPage/KpGauge";
+import MeteoIcon from "./components/mainPage/MeteoIcon";
+import { Meteo } from "./types/forecast";
 
 type Prediction = {
   hour: string;
   percentage: number;
   reason: string;
+  meteo: Meteo;
+  kp: number;
 };
 
 export default function Home() {
@@ -57,7 +61,6 @@ export default function Home() {
             body: JSON.stringify({ lat, lon }),
           });
           const meteoData = await meteoRes.json();
-
           const hourlyTimes: string[] = meteoData.hourlyTimes;
           const hourlyCloud: number[] = meteoData.hourlyCloud;
 
@@ -68,32 +71,25 @@ export default function Home() {
           const targetHours: string[] = [];
 
           const addHour = (d: Date) => targetHours.push(d.toISOString());
-
-          addHour(new Date(now));
-
+          addHour(new Date(now)); // current
           const tonight22 = new Date(now);
           tonight22.setHours(22, 0, 0, 0);
           addHour(tonight22);
-
           const tom00 = new Date(now);
           tom00.setDate(tom00.getDate() + 1);
           tom00.setHours(0, 0, 0, 0);
           addHour(tom00);
-
           const tom02 = new Date(tom00);
           tom02.setHours(2, 0, 0, 0);
           addHour(tom02);
-
           const tom22 = new Date(now);
           tom22.setDate(tom22.getDate() + 1);
           tom22.setHours(22, 0, 0, 0);
           addHour(tom22);
-
           const aft00 = new Date(now);
           aft00.setDate(aft00.getDate() + 2);
           aft00.setHours(0, 0, 0, 0);
           addHour(aft00);
-
           const aft02 = new Date(aft00);
           aft02.setHours(2, 0, 0, 0);
           addHour(aft02);
@@ -125,14 +121,22 @@ export default function Home() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
           });
-
           const iaData = await iaRes.json();
-
           const simplified = iaData.map(
-            (p: { percentage: number; reason: string }, i: number) => ({
+            (
+              p: {
+                percentage: number;
+                reason: string;
+                meteo: Meteo;
+                kp: number;
+              },
+              i: number
+            ) => ({
               hour: targetHours[i],
-              percentage: p.percentage ?? 0,
-              reason: p.reason?.split(".")[0] ?? "No reason",
+              percentage: p?.percentage ?? 0,
+              reason: p?.reason?.split(".")[0] ?? "No reason",
+              meteo: p?.meteo ?? "CLEAR",
+              kp: p?.kp ?? 0,
             })
           );
 
@@ -155,32 +159,66 @@ export default function Home() {
   // RENDER
   // -------------------------------------------------------
   return (
-    <div className="min-h-screen flex flex-col items-center text-white p-4">
-      {loading && <p>Loading… ⏳</p>}
+    <div className="min-h-screen flex flex-col items-center text-white p-4 space-y-6">
+      {/* CURRENT PREDICTION */}
+      <div className="p-4 bg-gray-900/70 rounded-xl w-full max-w-md border border-white/10 backdrop-blur-md flex flex-col items-center">
+        <h2 className="text-xl font-bold mb-4">
+          Current Aurora in {city || "..."}
+        </h2>
 
-      {!loading && predictions.length > 0 && (
-        <>
-          {/* CURRENT PREDICTION */}
-          <div className="mb-6 p-4 bg-gray-900/70 rounded-xl w-full max-w-md border border-white/10 backdrop-blur-md">
-            <h2 className="text-xl font-bold mb-2">Current Aurora in {city}</h2>
-
-            <p className="text-lg font-semibold">
-              {predictions[0].percentage}% chance
-            </p>
-            <p className="text-gray-300 mt-1">{predictions[0].reason}</p>
+        {loading ? (
+          <div className="animate-pulse space-y-2 w-full flex flex-col items-center">
+            <div className="h-6 w-16 bg-gray-700 rounded"></div>
+            <div className="h-4 w-32 bg-gray-700 rounded"></div>
           </div>
+        ) : (
+          <>
+            <p className="text-lg font-semibold mb-2">
+              {predictions[0]?.percentage}% chance
+            </p>
 
-          {/* TONIGHT */}
-          <AuroraLine title="Tonight" items={predictions.slice(1, 4)} />
+            <p className="text-gray-300 mb-4">{predictions[0]?.reason}</p>
 
-          {/* TOMORROW */}
-          <AuroraLine title="Tomorrow" items={predictions.slice(4, 7)} />
-          <KpGauge kp={4} />
-          <KpGauge kp={1} />
-          <KpGauge kp={9} />
-          <KpGauge kp={10} />
-        </>
-      )}
+            <div className="flex items-start space-x-4">
+              {/* Jauge à gauche */}
+              <div className="flex items-center mt-2">
+                <KpGauge
+                  key={predictions[0]?.kp}
+                  kp={predictions[0]?.kp}
+                  diameter={100}
+                  text={true}
+                />
+              </div>
+
+              {/* Météo à droite, icône + label */}
+              <div className="flex flex-col items-center mt-2">
+                <MeteoIcon meteo={predictions[0]?.meteo} size="large" />
+                <span className="mt-2 text-sm">
+                  {predictions[0]?.meteo === "CLEAR"
+                    ? "Clear"
+                    : predictions[0]?.meteo === "DAY"
+                    ? "Too bright due to daylight"
+                    : "Too cloudy"}
+                </span>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* TONIGHT */}
+      <AuroraLine
+        title="Tonight"
+        items={predictions.slice(1, 4)}
+        loading={loading}
+      />
+
+      {/* TOMORROW */}
+      <AuroraLine
+        title="Tomorrow"
+        items={predictions.slice(4, 7)}
+        loading={loading}
+      />
 
       {error && <p className="text-red-500 mt-4">{error}</p>}
     </div>

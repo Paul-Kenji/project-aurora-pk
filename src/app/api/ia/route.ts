@@ -55,21 +55,13 @@ function isNightSherbrooke(date: Date) {
 
 // --- Adjust Kp by latitude ---
 function kpToProbability(kp: number, lat: number) {
-  let factor = 1;
-  if (lat >= 65) factor = 1.0;
-  else if (lat >= 60) factor = 0.7;
-  else if (lat >= 55) factor = 0.5;
-  else if (lat >= 50) factor = 0.3;
-  else factor = 0.1;
-  return Math.round(kp * 10 * factor);
-}
-
-// --- Convert cloud % to category ---
-function cloudCategory(percent: number) {
-  if (percent <= 20) return "low";
-  if (percent <= 50) return "moderate";
-  if (percent <= 80) return "high";
-  return "very high";
+  // facteur linéaire de 40°N → 70°N : 0.4 → 1.0
+  const factor = Math.min(
+    Math.max(((lat - 40) / (70 - 40)) * 0.6 + 0.4, 0.4),
+    1.0
+  );
+  const prob = kp * 10 * factor;
+  return Math.round(prob);
 }
 
 export async function POST(req: Request) {
@@ -191,21 +183,24 @@ Return ONLY a JSON array:
 
       let percentage = kpToProbability(kp, lat);
       let reason = "";
+      let meteo = "";
 
       if (!night) {
         reason = "Daytime, aurora not visible";
         percentage = 0;
+        meteo = "DAY";
       } else if (kp < 3) {
         reason = "Kp index too low";
       } else if (cloud > 50) {
         reason = "Cloud cover too high";
         percentage = Math.round(percentage * 0.5);
+        meteo = "CLOUD";
       } else if (cloud > 20) {
         reason = "Moderate cloud cover";
         percentage = Math.round(percentage * 0.8);
+        meteo = "CLOUDY";
       } else if (lat < 50 && percentage < 20) {
         reason = "Low latitude, aurora unlikely";
-        // on garde la valeur pour avoir une petite chance
       } else {
         reason = "Clear conditions, aurora likely";
       }
@@ -214,6 +209,8 @@ Return ONLY a JSON array:
         time: toSherbrookeTime(dateUTC).toISOString(),
         percentage,
         reason,
+        meteo,
+        kp,
       };
     });
 

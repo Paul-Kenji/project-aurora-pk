@@ -4,11 +4,12 @@ import { CircularProgressbar, buildStyles } from "react-circular-progressbar";
 import "react-circular-progressbar/dist/styles.css";
 
 type KpGaugeProps = {
-  kp: number; // 0 à 9
+  kp: number;
+  diameter: number;
+  text?: boolean;
 };
 
-export const KpGauge: React.FC<KpGaugeProps> = ({ kp }) => {
-  // Définir couleur selon le Kp
+export const KpGauge: React.FC<KpGaugeProps> = ({ kp, diameter, text }) => {
   const getColor = (kp: number) => {
     if (kp <= 2) return "#4CAF50"; // vert
     if (kp <= 5) return "#FFEB3B"; // jaune
@@ -18,17 +19,17 @@ export const KpGauge: React.FC<KpGaugeProps> = ({ kp }) => {
   };
 
   return (
-    <div style={{ width: 120, height: 120 }}>
+    <div style={{ width: diameter, height: diameter }}>
       <CircularProgressbar
-        value={kp * 10} // échelle 0-100
+        value={kp * 10}
         maxValue={100}
-        text={`Kp ${kp}`}
+        strokeWidth={10}
         styles={buildStyles({
           pathColor: getColor(kp),
-          textColor: "#333",
           trailColor: "#eee",
-          textSize: "16px",
+          textColor: "#eee",
         })}
+        text={text ? `KP ${kp}` : ""}
       />
     </div>
   );
