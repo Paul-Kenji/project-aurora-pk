@@ -179,18 +179,13 @@ export default function Home() {
 
             <p className="text-gray-300 mb-4">{predictions[0]?.reason}</p>
 
-            <div className="flex items-start space-x-4">
-              {/* Jauge à gauche */}
-              <div className="flex items-center mt-2">
-                <KpGauge
-                  key={predictions[0]?.kp}
-                  kp={predictions[0]?.kp}
-                  diameter={100}
-                  text={true}
-                />
-              </div>
+            <div className="flex items-center space-x-4">
+              <KpGauge
+                kp={predictions[0]?.kp ?? 0}
+                diameter={100}
+                text={true}
+              />
 
-              {/* Météo à droite, icône + label */}
               <div className="flex flex-col items-center mt-2">
                 <MeteoIcon meteo={predictions[0]?.meteo} size="large" />
                 <span className="mt-2 text-sm">

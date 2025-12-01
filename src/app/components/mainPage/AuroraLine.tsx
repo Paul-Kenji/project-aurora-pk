@@ -15,7 +15,6 @@ type AuroraLineProps = {
 };
 
 export default function AuroraLine({ title, items, loading }: AuroraLineProps) {
-  // Si loading, créer 3 placeholders
   const displayItems = loading ? Array(3).fill({}) : items;
 
   return (
@@ -36,6 +35,8 @@ export default function AuroraLine({ title, items, loading }: AuroraLineProps) {
             }
             percentage={p.percentage}
             reason={p.reason}
+            meteo={p.meteo}
+            kp={p.kp}
             loading={loading}
           />
         ))}

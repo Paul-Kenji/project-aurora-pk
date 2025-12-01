@@ -22,46 +22,62 @@ export default function Home() {
   // Pendant l'hydratation, affiche un état de chargement simple
   if (!mounted) {
     return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        minHeight: '100vh' 
-      }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "100vh",
+        }}
+      >
         <p>Chargement...</p>
       </div>
     );
   }
 
   return (
-    <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center" minHeight="100vh" gap={3} padding={2}>
+    <Box
+      display="flex"
+      flexDirection="column"
+      alignItems="center"
+      justifyContent="center"
+      minHeight="100vh"
+      gap={3}
+      padding={2}
+    >
       <Typography variant="h2" component="h1" gutterBottom textAlign="center">
-        Bienvenueeee
+        Welcome
       </Typography>
 
       <Typography variant="h6" color="text.secondary" textAlign="center" mb={3}>
-        Connectez-vous ou créez un compte pour continuer
+        Please log in or create an account to continue
       </Typography>
 
-      <Box display="flex" flexDirection="column" gap={2} width="100%" maxWidth="300px">
-        <Button 
-          variant="contained" 
-          color="primary" 
+      <Box
+        display="flex"
+        flexDirection="column"
+        gap={2}
+        width="100%"
+        maxWidth="300px"
+      >
+        <Button
+          variant="contained"
+          color="primary"
           onClick={handleSignUp}
-          size="large" 
+          size="large"
           fullWidth
         >
-          S'INSCRIRE
+          CREATE ACCOUNT
         </Button>
 
-        <Button 
-          variant="outlined" 
-          color="secondary" 
+        <Button
+          variant="outlined"
+          color="secondary"
           onClick={handleLogin}
-          size="large" 
+          size="large"
           fullWidth
         >
-          CONNEXIONeee
+          LOGIN
         </Button>
       </Box>
     </Box>

@@ -10,14 +10,47 @@ type MeteoProps = {
 };
 
 export default function MeteoIcon({ meteo, size = "medium" }: MeteoProps) {
+  // Définir la taille en px selon le label
+  const fontSizePx = size === "small" ? 24 : size === "medium" ? 36 : 48;
+
+  // Style commun pour toutes les icônes
+  const commonStyle = {
+    fontSize: "inherit", // prend la taille du parent
+    filter:
+      size === "small"
+        ? "drop-shadow(0 0 1px #f9f9f9ff)"
+        : "drop-shadow(0 0 12px #f9f9f9ff)",
+  };
+
+  // Wrapper pour contrôler la taille proprement
+  const IconWrapper = ({ children }: { children: React.ReactNode }) => (
+    <div style={{ fontSize: fontSizePx }}>{children}</div>
+  );
+
   switch (meteo) {
     case "DAY":
-      return <SunnyIcon fontSize={size} style={{ color: "#FFD700" }} />;
+      return (
+        <IconWrapper>
+          <SunnyIcon style={{ ...commonStyle, color: "#FFD700" }} />
+        </IconWrapper>
+      );
     case "CLOUD":
-      return <CloudIcon fontSize={size} style={{ color: "#B0C4DE" }} />;
+      return (
+        <IconWrapper>
+          <CloudIcon style={{ ...commonStyle, color: "#B0C4DE" }} />
+        </IconWrapper>
+      );
     case "CLOUDY":
-      return <NightsStayIcon fontSize={size} style={{ color: "#778899" }} />;
+      return (
+        <IconWrapper>
+          <NightsStayIcon style={{ ...commonStyle, color: "#778899" }} />
+        </IconWrapper>
+      );
     default:
-      return <AutoAwesomeIcon fontSize={size} style={{ color: "#00BFFF" }} />;
+      return (
+        <IconWrapper>
+          <AutoAwesomeIcon style={{ ...commonStyle, color: "#a3e4fa" }} />
+        </IconWrapper>
+      );
   }
 }
