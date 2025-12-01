@@ -1,10 +1,12 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import AuroraLine from "./components/mainPage/AuroraLine";
 import { KpGauge } from "./components/mainPage/KpGauge";
 import MeteoIcon from "./components/mainPage/MeteoIcon";
 import { Meteo } from "./types/forecast";
+import GaugeIcon from "../assets/gauge-icon.png";
 
 type Prediction = {
   hour: string;
@@ -159,10 +161,10 @@ export default function Home() {
   // RENDER
   // -------------------------------------------------------
   return (
-    <div className="min-h-screen flex flex-col items-center text-white p-4 space-y-6">
+    <div className="min-h-screen flex flex-col items-center text-white">
       {/* CURRENT PREDICTION */}
       <div className="p-4 bg-gray-900/70 rounded-xl w-full max-w-md border border-white/10 backdrop-blur-md flex flex-col items-center">
-        <h2 className="text-xl font-bold mb-4">
+        <h2 className="text-xl font-bold mb-2">
           Current Aurora in {city || "..."}
         </h2>
 
@@ -177,9 +179,9 @@ export default function Home() {
               {predictions[0]?.percentage}% chance
             </p>
 
-            <p className="text-gray-300 mb-4">{predictions[0]?.reason}</p>
+            <p className="text-gray-300 mb-2">{predictions[0]?.reason}</p>
 
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-6">
               <KpGauge
                 kp={predictions[0]?.kp ?? 0}
                 diameter={100}
@@ -199,6 +201,20 @@ export default function Home() {
             </div>
           </>
         )}
+      </div>
+
+      <div className="flex items-start mt-2 space-x-2 mt-4">
+        <Image src={GaugeIcon} width={30} height={30} alt="Gauge Icon" />
+        <div className="flex flex-col">
+          <p className="text-xs">
+            The Kp index is a simple measure of geomagnetic activity, ranging
+            from 0 (calm) to 9 (very disturbed).
+          </p>
+          <p className="text-xs mt-1">
+            We combine it with various NOAA data and weather forecasts to let
+            our AI calculate the probability of seeing an aurora.
+          </p>
+        </div>
       </div>
 
       {/* TONIGHT */}

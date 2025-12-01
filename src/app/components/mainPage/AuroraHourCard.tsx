@@ -23,10 +23,10 @@ export default function AuroraHourCard({
 }: AuroraHourCardProps) {
   if (loading) {
     return (
-      <div className="flex flex-col items-center p-3 bg-gray-900 rounded-xl w-24 shadow-md animate-pulse">
-        <div className="h-4 w-10 bg-gray-700 rounded mb-2"></div>
-        <div className="h-6 w-12 bg-gray-700 rounded mb-2"></div>
-        <div className="h-3 w-16 bg-gray-700 rounded"></div>
+      <div className="flex flex-col items-center p-3 bg-gray-900 rounded-xl w-24 shadow-md ">
+        <div className="h-4 w-10 bg-gray-700 rounded mb-2 animate-pulse"></div>
+        <div className="h-6 w-12 bg-gray-700 rounded mb-2 animate-pulse"></div>
+        <div className="h-3 w-16 bg-gray-700 rounded animate-pulse"></div>
       </div>
     );
   }

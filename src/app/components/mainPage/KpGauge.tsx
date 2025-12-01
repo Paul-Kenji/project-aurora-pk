@@ -16,8 +16,8 @@ export const KpGauge: React.FC<KpGaugeProps> = ({ kp, diameter, text }) => {
   useEffect(() => {
     let start: number | null = null;
     let phase: "full" | "settle" = "full";
-    const durationFull = 800; // remplir entier rapidement
-    const durationSettle = 1200; // revenir doucement
+    const durationFull = 500; // remplir entier rapidement
+    const durationSettle = 2200; // revenir doucement
 
     const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
 
@@ -79,7 +79,7 @@ export const KpGauge: React.FC<KpGaugeProps> = ({ kp, diameter, text }) => {
             strokeLinecap: "round",
             transition: "stroke 0.3s linear",
           },
-          trail: { stroke: "#eee" },
+          trail: { stroke: "#eeeeee49" },
         }}
       >
         {text && (

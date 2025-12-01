@@ -30,7 +30,17 @@ export default function RootLayout({
           <main className="relative z-10 min-h-screen">{children}</main>
         </UserProvider>
 
-        <footer className="w-full p-4 relative z-10 flex justify-center items-center space-x-8">
+        <footer
+          className="
+    w-full p-4 relative z-10
+    flex flex-col md:flex-row
+    justify-center md:justify-between
+    items-center
+    space-y-3 md:space-y-0 md:space-x-8
+    text-center
+    text-sm
+  "
+        >
           <p>© {new Date().getFullYear()} Aurora-PK</p>
           <p>Privacy Policy</p>
           <p>Terms of Uses</p>
