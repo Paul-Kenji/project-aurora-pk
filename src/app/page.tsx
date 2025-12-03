@@ -7,14 +7,10 @@ import { KpGauge } from "./components/mainPage/KpGauge";
 import MeteoIcon from "./components/mainPage/MeteoIcon";
 import { Meteo } from "./types/forecast";
 import GaugeIcon from "../assets/gauge-icon.png";
-
-type Prediction = {
-  hour: string;
-  percentage: number;
-  reason: string;
-  meteo: Meteo;
-  kp: number;
-};
+import HistoryGraph from "./components/mainPage/HistoryGraph";
+import HistoryGraphLegend from "./components/mainPage/HistoryGraphLegend";
+import { Prediction } from "./types/forecast";
+import { KpPoint } from "./types/forecast";
 
 export default function Home() {
   const [location, setLocation] = useState<{ lat: number; lon: number } | null>(
@@ -22,6 +18,8 @@ export default function Home() {
   );
   const [city, setCity] = useState<string | null>(null);
   const [predictions, setPredictions] = useState<Prediction[]>([]);
+  const [kpHistory, setKpHistory] = useState<KpPoint[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -105,6 +103,15 @@ export default function Home() {
           });
           const kpData = await kpRes.json();
 
+          // -------------------------------------------------------
+          // NOAA KP History
+          // -------------------------------------------------------
+          const kpHistoryRes = await fetch("/api/kp-history", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+          });
+          const kpHistoryData = await kpHistoryRes.json();
+          setKpHistory(kpHistoryData.data);
           // ---------------------------------------------
           // IA PAYLOAD
           // ---------------------------------------------
@@ -143,6 +150,8 @@ export default function Home() {
           );
 
           setPredictions(simplified);
+
+          console.log("Predictions:", simplified);
         } catch (err) {
           console.error(err);
           setError("Failed to load data");
@@ -193,9 +202,13 @@ export default function Home() {
                 <span className="mt-2 text-sm">
                   {predictions[0]?.meteo === "CLEAR"
                     ? "Clear"
+                    : predictions[0]?.meteo === "CLOUD"
+                    ? "Too cloudy"
+                    : predictions[0]?.meteo === "CLOUDY"
+                    ? "Too cloudy"
                     : predictions[0]?.meteo === "DAY"
                     ? "Too bright due to daylight"
-                    : "Too cloudy"}
+                    : "The sky is clear"}
                 </span>
               </div>
             </div>
@@ -245,6 +258,18 @@ export default function Home() {
         items={predictions.slice(4, 7)}
         loading={loading}
       />
+
+      <div className="mt-8">
+        <h3 className="text-lg font-bold">Kp Index History</h3>
+      </div>
+
+      <HistoryGraph data={kpHistory} />
+
+      <div className="mt-2">
+        <h5 className="text-ms">History from the last 30 days</h5>
+      </div>
+
+      <HistoryGraphLegend />
 
       {error && <p className="text-red-500 mt-4">{error}</p>}
     </div>

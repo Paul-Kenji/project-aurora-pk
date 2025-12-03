@@ -2,6 +2,10 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 reminder: localement le projet est sur / C:\Users\p.bochaton\projet_auth0
 
+# TODO
+
+graphique historique 30 derniers jours kp index 3 ligne une pour chaque niveau de latitude des donnes NOAA
+
 ## Getting Started
 
 First, run the development server:

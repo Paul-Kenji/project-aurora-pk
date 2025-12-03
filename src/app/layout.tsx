@@ -19,7 +19,7 @@ export default function RootLayout({
         <UserProvider>
           <main className="relative z-10 min-h-screen">{children}</main>
         </UserProvider>
-        <div className="mt-4">
+        <div className="mt-10">
           <Footer />
         </div>
       </body>
