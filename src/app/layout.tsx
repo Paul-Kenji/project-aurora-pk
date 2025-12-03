@@ -1,9 +1,9 @@
 import type React from "react";
 import { UserProvider } from "@auth0/nextjs-auth0/client";
-import Link from "next/link";
 import AuroraBackground from "./components/AuroraBackground";
-import LinkedInIcon from "@mui/icons-material/LinkedIn";
 import "./globals.css";
+import Footer from "./components/globalPage/Footer";
+import Header from "./components/globalPage/Header";
 
 export default function RootLayout({
   children,
@@ -14,46 +14,14 @@ export default function RootLayout({
     <html lang="fr">
       <body className="relative min-h-screen text-white">
         <AuroraBackground />
-
-        {/* Header */}
-        <header className="w-full flex justify-end p-4 relative z-10">
-          <Link
-            href="/login"
-            className="bg-gray-900/70 border border-white/10 px-4 py-2 rounded"
-          >
-            Login
-          </Link>
-        </header>
-
+        <Header />
         {/* Contenu */}
         <UserProvider>
           <main className="relative z-10 min-h-screen">{children}</main>
         </UserProvider>
-
-        <footer
-          className="
-    w-full p-4 relative z-10
-    flex flex-col md:flex-row
-    justify-center md:justify-between
-    items-center
-    space-y-3 md:space-y-0 md:space-x-8
-    text-center
-    text-sm
-  "
-        >
-          <p>© {new Date().getFullYear()} Aurora-PK</p>
-          <p>Privacy Policy</p>
-          <p>Terms of Uses</p>
-          <p>About Us</p>
-          <a
-            href="https://www.linkedin.com/in/paul-kenji"
-            rel="noopener noreferrer"
-            className="flex items-center space-x-2"
-          >
-            <LinkedInIcon />
-            <span>LinkedIn</span>
-          </a>
-        </footer>
+        <div className="mt-4">
+          <Footer />
+        </div>
       </body>
     </html>
   );

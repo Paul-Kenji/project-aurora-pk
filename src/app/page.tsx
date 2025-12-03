@@ -161,7 +161,7 @@ export default function Home() {
   // RENDER
   // -------------------------------------------------------
   return (
-    <div className="min-h-screen flex flex-col items-center text-white">
+    <div className="min-h-screen flex flex-col items-center text-white px-4">
       {/* CURRENT PREDICTION */}
       <div className="p-4 bg-gray-900/70 rounded-xl w-full max-w-md border border-white/10 backdrop-blur-md flex flex-col items-center">
         <h2 className="text-xl font-bold mb-2">
@@ -203,19 +203,34 @@ export default function Home() {
         )}
       </div>
 
-      <div className="flex items-start mt-2 space-x-2 mt-4">
-        <Image src={GaugeIcon} width={30} height={30} alt="Gauge Icon" />
-        <div className="flex flex-col">
-          <p className="text-xs">
-            The Kp index is a simple measure of geomagnetic activity, ranging
-            from 0 (calm) to 9 (very disturbed).
-          </p>
-          <p className="text-xs mt-1">
-            We combine it with various NOAA data and weather forecasts to let
-            our AI calculate the probability of seeing an aurora.
-          </p>
+      {!loading ? (
+        <div className="flex items-start mt-2 space-x-2 mt-4 max-w-xl">
+          <Image
+            className="-mt-2"
+            src={GaugeIcon}
+            width={30}
+            height={30}
+            alt="Gauge Icon"
+          />
+          <div className="flex flex-col">
+            <p className="text-xs">
+              The Kp index is a simple measure of geomagnetic activity, ranging
+              from 0 (calm) to 9 (very disturbed).
+            </p>
+            <p className="text-xs mt-1">
+              We combine it with various NOAA data and weather forecasts to let
+              our AI calculate the probability of seeing an aurora.
+            </p>
+
+            <p className="text-xs mt-1">
+              Note: Aurora forecasts are only estimates. Nature is
+              unpredictable, and real conditions may vary. Even if nothing is
+              visible, try a long-exposure photo, your camera may capture what
+              the eye can’t.
+            </p>
+          </div>
         </div>
-      </div>
+      ) : null}
 
       {/* TONIGHT */}
       <AuroraLine
