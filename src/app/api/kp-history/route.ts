@@ -37,7 +37,6 @@ export async function POST() {
 
     const text = await res.text();
     const parsedData = parseGeomagneticForGraph(text);
-    console.log("Parsed Geomagnetic Data:", parsedData);
     return NextResponse.json({ data: parsedData });
   } catch (err) {
     console.error("Error fetching NOAA daily geomagnetic data:", err);

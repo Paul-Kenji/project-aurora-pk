@@ -15,6 +15,7 @@
     "@google/genai": "^1.29.1",
     "@mui/icons-material": "^7.3.5",
     "@mui/material": "^7.3.5",
+    "embla-carousel-react": "^8.6.0",
     "framer-motion": "^12.23.24",
     "mongodb": "^6.17.0",
     "mui": "^0.0.1",
