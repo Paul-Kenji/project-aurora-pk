@@ -38,19 +38,11 @@ function parseNOAA(text: string) {
   return { kp, radiation, blackout };
 }
 
-// --- Convert UTC date to Sherbrooke local time ---
-function toSherbrookeTime(utcDate: Date) {
-  const offset = -5; // UTC-5 pour Sherbrooke (hiver)
-  const local = new Date(utcDate);
-  local.setHours(local.getUTCHours() + offset);
-  return local;
-}
-
-// --- Check if night ---
-function isNightSherbrooke(date: Date) {
-  const local = toSherbrookeTime(date);
-  const hour = local.getHours();
-  return hour < 6 || hour >= 18;
+function isNightAtLocation(date: Date, lat: number, lon: number) {
+  const utcHour = date.getUTCHours();
+  const offsetHours = Math.round(lon / 15);
+  const localHour = (utcHour + offsetHours + 24) % 24;
+  return localHour < 6 || localHour >= 18;
 }
 
 // --- Adjust Kp by latitude ---
@@ -58,7 +50,7 @@ function kpToProbability(kp: number, lat: number) {
   // facteur linéaire de 40°N → 70°N : 0.4 → 1.0
   const factor = Math.min(
     Math.max(((lat - 40) / (70 - 40)) * 0.6 + 0.4, 0.4),
-    1.0
+    1.0,
   );
   const prob = kp * 10 * factor;
   return Math.round(prob);
@@ -80,7 +72,7 @@ export async function POST(req: Request) {
     if (!lat || !lon || !noaaForecastText || !targetHours?.length) {
       return NextResponse.json(
         { error: "Données manquantes" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -112,14 +104,14 @@ ${
 
 Rules:
 - Use latitude to adjust aurora probability (closer to pole = higher probability).
-- If it is day at the target hour in Sherbrooke, visibility percentage = 0%.
+- If it is day at the target hour, visibility percentage = 0%.
 - Take Kp index, radiation, blackout, cloud cover, and latitude into account.
 - Return short reason for each hour.
 - Do NOT invent numbers.
 
 Return ONLY a JSON array:
 [
-  { "time": "ISO (Sherbrooke local)", "percentage": 0-100, "reason": "short explanation" }
+  { "time": "ISO (local)", "percentage": 0-100, "reason": "short explanation" }
 ]
 `;
 
@@ -137,7 +129,7 @@ Return ONLY a JSON array:
           max_tokens: 1000,
           temperature: 0,
         }),
-      }
+      },
     );
 
     if (!aiRes.ok) {
@@ -157,14 +149,14 @@ Return ONLY a JSON array:
       if (!jsonMatch)
         return NextResponse.json(
           { error: "Réponse IA invalide", raw },
-          { status: 500 }
+          { status: 500 },
         );
       try {
         predictions = JSON.parse(jsonMatch[0]);
       } catch (err) {
         return NextResponse.json(
           { error: "Impossible de parser la réponse IA", raw },
-          { status: 500 }
+          { status: 500 },
         );
       }
     }
@@ -172,7 +164,7 @@ Return ONLY a JSON array:
     // --- Post-processing ---
     const finalPredictions = predictions.map((p: any, idx: number) => {
       const dateUTC = targetDatesUTC[idx];
-      const night = isNightSherbrooke(dateUTC);
+      const night = isNightAtLocation(dateUTC, lat, lon);
       const kpWindow = Object.entries(parsedNOAA.kp).find(([range]) => {
         const [startStr, endStr] = range.split("-").map((s) => parseInt(s));
         const hour = dateUTC.getUTCHours();
@@ -206,7 +198,7 @@ Return ONLY a JSON array:
       }
 
       return {
-        time: toSherbrookeTime(dateUTC).toISOString(),
+        time: dateUTC.toISOString(),
         percentage,
         reason,
         meteo,
@@ -219,7 +211,7 @@ Return ONLY a JSON array:
     console.error("Aurora POST error:", err);
     return NextResponse.json(
       { error: "Erreur lors de la prédiction" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
