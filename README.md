@@ -6,6 +6,8 @@ reminder: localement le projet est sur / C:\Users\p.bochaton\projet_auth0
 
 graphique historique 30 derniers jours kp index 3 ligne une pour chaque niveau de latitude des donnes NOAA
 
+un truc qui aide en fonction de la photo pour dire les parametre qu il faut changer isa ouverture exposition et tout pou rprendre une meilleur photo possible
+
 ## Getting Started
 
 First, run the development server:

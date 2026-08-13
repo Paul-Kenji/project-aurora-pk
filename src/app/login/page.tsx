@@ -1,6 +1,5 @@
 "use client";
 
-import { Button, Box, Typography } from "@mui/material";
 import { useEffect, useState } from "react";
 
 export default function Home() {
@@ -22,64 +21,35 @@ export default function Home() {
   // Pendant l'hydratation, affiche un état de chargement simple
   if (!mounted) {
     return (
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          minHeight: "100vh",
-        }}
-      >
-        <p>Chargement...</p>
+      <div className="min-h-screen flex items-center justify-center text-white">
+        <p className="text-gray-300">Chargement...</p>
       </div>
     );
   }
 
   return (
-    <Box
-      display="flex"
-      flexDirection="column"
-      alignItems="center"
-      justifyContent="center"
-      minHeight="100vh"
-      gap={3}
-      padding={2}
-    >
-      <Typography variant="h2" component="h1" gutterBottom textAlign="center">
-        Welcome
-      </Typography>
+    <div className="min-h-screen flex flex-col items-center justify-center text-white px-4">
+      <h1 className="text-4xl font-bold mb-4 text-center">Welcome</h1>
 
-      <Typography variant="h6" color="text.secondary" textAlign="center" mb={3}>
-        Please log in or create an account to continue
-      </Typography>
+      <p className="text-gray-300 text-center mb-10 max-w-md">
+        Please log in or create an account to continue.
+      </p>
 
-      <Box
-        display="flex"
-        flexDirection="column"
-        gap={2}
-        width="100%"
-        maxWidth="300px"
-      >
-        <Button
-          variant="contained"
-          color="primary"
+      <div className="flex flex-col gap-3 w-full max-w-xs">
+        <button
           onClick={handleSignUp}
-          size="large"
-          fullWidth
+          className="w-full py-3 rounded-lg bg-white text-black font-semibold hover:bg-gray-200 transition-colors"
         >
-          CREATE ACCOUNT
-        </Button>
+          Create account
+        </button>
 
-        <Button
-          variant="outlined"
-          color="secondary"
+        <button
           onClick={handleLogin}
-          size="large"
-          fullWidth
+          className="w-full py-3 rounded-lg border border-gray-500 text-white font-semibold hover:border-white transition-colors"
         >
-          LOGIN
-        </Button>
-      </Box>
-    </Box>
+          Log in
+        </button>
+      </div>
+    </div>
   );
 }

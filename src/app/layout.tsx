@@ -14,9 +14,9 @@ export default function RootLayout({
     <html lang="fr">
       <body className="relative min-h-screen text-white">
         <AuroraBackground />
-        <Header />
-        {/* Contenu */}
         <UserProvider>
+          <Header />
+          {/* Contenu */}
           <main className="relative z-10 min-h-screen">{children}</main>
         </UserProvider>
         <div className="mt-10">
