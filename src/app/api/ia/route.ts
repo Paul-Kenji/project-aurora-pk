@@ -124,17 +124,19 @@ Return ONLY a JSON array:
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "llama-3.3-70b-versatile",
+          model: "openai/gpt-oss-20b",
           messages: [{ role: "user", content: prompt }],
-          max_tokens: 1000,
-          temperature: 0,
+          response_format: { type: "json_object" },
+          temperature: 0.1,
         }),
       },
     );
 
     if (!aiRes.ok) {
-      const text = await aiRes.text();
-      console.error("Groq API error:", text);
+      const errorText = await aiRes.text();
+
+      console.error("Groq status:", aiRes.status);
+      console.error("Groq response:", errorText);
       return NextResponse.json({ error: "Erreur Groq API" }, { status: 500 });
     }
 

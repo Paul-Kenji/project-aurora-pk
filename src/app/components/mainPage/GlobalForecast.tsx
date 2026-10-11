@@ -87,6 +87,12 @@ export default function GlobalForecast({
         });
         const iaData = await iaRes.json();
 
+        console.log("IA response:", iaData);
+        if (!Array.isArray(iaData)) {
+          console.error("Réponse API inattendue (pas un tableau):", iaData);
+          throw new Error(iaData?.error || "Format de réponse invalide");
+        }
+
         const simplified = iaData.map(
           (
             p: { percentage: number; reason: string; meteo: Meteo; kp: number },
